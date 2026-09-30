@@ -1,0 +1,2 @@
+language,test,run_id,timestamp,avg_ms,p90_ms,p95_ms,p99_ms,req_per_s,checks_pct,cpu_avg_pct,mem_avg_mib,samples_in_window
+rust,test1_crud,1,2026-09-30T12:57:31Z,24.995,29.522,40.484,74.255,944.214,100.0,13.442,33.125,15
