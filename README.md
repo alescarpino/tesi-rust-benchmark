@@ -65,18 +65,8 @@ k6 stampa un report. I valori chiave per la tesi:
 Da `docker stats` annota il picco di CPU% e memoria (MEM USAGE) per
 `rust-backend` e `node-backend`.
 
-## Per risultati validi nella tesi
-
-1. **Ripeti ogni test 3-5 volte** e fai la media
-2. **Chiudi le altre app** durante i test (browser, ecc.)
-3. **Riscalda** il backend con qualche richiesta prima di misurare sul serio
-4. **Stessa macchina, stesso momento** per entrambi i linguaggi
-5. Docker garantisce **limiti di risorse identici** (1 CPU, 512MB ciascuno)
-
 ## Nota metodologica per la tesi
 
 Questo è un confronto "controllato": entrambi i backend fanno esattamente
 la stessa cosa, con la stessa query, lo stesso schema e le stesse risorse.
-Il backend reale di ARMS fa molto di più (validazioni, autenticazione,
-permessi, eventi NATS), quindi questi numeri NON rappresentano le performance
-di ARMS in produzione, ma isolano la differenza dovuta al solo linguaggio/stack.
+Il backend reale di ARMS fa molto di più, quindi questi numeri non sono da comparare con le prestazioni di ARMS
