@@ -41,3 +41,15 @@ services:
     deploy:
       resources:
         limits: { cpus: "1", memory: 512M }
+
+  node-bench:
+    build: ./implementation/node
+    environment:
+      DATABASE_URL: postgres://bench:bench@db:5432/bench
+    ports: ["3002:8080"]
+    depends_on:
+      db:
+        condition: service_healthy
+    deploy:
+      resources:
+        limits: { cpus: "1", memory: 512M }

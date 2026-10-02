@@ -11,6 +11,7 @@ public class ItemController {
 
     private final JdbcTemplate jdbcTemplate;
 
+    // qui si riceve il pool  che è stato creatto da spring
     public ItemController(JdbcTemplate jdbcTemplate) {
         this.jdbcTemplate = jdbcTemplate;
     }

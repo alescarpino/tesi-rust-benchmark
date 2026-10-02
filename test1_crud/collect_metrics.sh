@@ -1,4 +1,4 @@
-CONTAINER="tesi-benchmark-rust-bench-1"
+CONTAINER="${1:-tesi-benchmark-rust-bench-1}"
 OUTPUT="metrics.csv"
 
 echo "timestamp,cpu_pct,mem_usage" > "$OUTPUT"
