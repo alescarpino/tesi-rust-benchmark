@@ -40,6 +40,26 @@ fastify.delete('/items/:id', async (request, reply) => {
   return reply.code(204).send();
 });
 
+fastify.get('/reports/revenue-by-branch', async (request, reply) => {
+  const result = await pool.query(`
+    SELECT
+        b.name AS branch_name,
+        i.name AS item_name,
+        SUM(cr.quantity * cr.price) AS total_revenue,
+        COUNT(*) AS line_count
+    FROM contract_rows cr
+    JOIN contracts c ON cr.contract_id = c.id
+    JOIN branches b ON c.branch_id = b.id
+    JOIN items i ON cr.item_id = i.id
+    WHERE c.status IN ('approved', 'ongoing')
+      AND c.start_date BETWEEN '2025-01-01' AND '2025-12-31'
+    GROUP BY b.name, i.name
+    ORDER BY total_revenue DESC
+    LIMIT 50
+  `);
+  return result.rows;
+});
+
 fastify.listen({ port: 8080, host: '0.0.0.0' }, (err) => {
   if (err) {
     console.error(err);

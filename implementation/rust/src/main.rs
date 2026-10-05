@@ -53,6 +53,39 @@ async fn delete_item(State(pool): State<PgPool>,Path(id): Path<i32>) -> Result<S
 
 }
 
+#[derive(Serialize, FromRow)]
+struct BranchItemRevenue {
+    branch_name: String,
+    item_name: String,
+    total_revenue: rust_decimal::Decimal,
+    line_count: i64,
+}
+
+async fn revenue_by_branch(
+    State(pool): State<PgPool>,
+) -> Result<Json<Vec<BranchItemRevenue>>, StatusCode> {
+    sqlx::query_as::<_, BranchItemRevenue>(
+        "SELECT
+            b.name AS branch_name,
+            i.name AS item_name,
+            SUM(cr.quantity * cr.price) AS total_revenue,
+            COUNT(*) AS line_count
+        FROM contract_rows cr
+        JOIN contracts c ON cr.contract_id = c.id
+        JOIN branches b ON c.branch_id = b.id
+        JOIN items i ON cr.item_id = i.id
+        WHERE c.status IN ('approved', 'ongoing')
+          AND c.start_date BETWEEN '2025-01-01' AND '2025-12-31'
+        GROUP BY b.name, i.name
+        ORDER BY total_revenue DESC
+        LIMIT 50",
+    )
+    .fetch_all(&pool)
+    .await
+    .map(Json)
+    .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)
+}
+
 #[tokio::main]
 async fn main() {
     let database_url = std::env::var("DATABASE_URL")
@@ -67,6 +100,7 @@ async fn main() {
                            .route("/items", post(create_item))
                            .route("/items/{id}", put(update_item))
                            .route("/items/{id}", delete(delete_item))
+                           .route("/reports/revenue-by-branch", get(revenue_by_branch))
                            .with_state(pool);
     let listener = tokio::net::TcpListener::bind("0.0.0.0:3000").await.unwrap();
     axum::serve(listener, app).await.unwrap();

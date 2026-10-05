@@ -1,0 +1,4 @@
+language,test,run_id,timestamp,vus,avg_ms,p90_ms,p95_ms,p99_ms,req_per_s,checks_pct,cpu_avg_pct,mem_avg_mib,samples_in_window
+rust,test2_heavy_query,1,2026-10-05T14:34:26Z,999,11750.358,14400.171,14704.431,15201.475,65.362,100.0,3.338,31.035,22
+java,test2_heavy_query,1,2026-10-05T14:35:12Z,999,11531.544,17296.757,17608.472,20515.952,66.222,100.0,19.596,225.673,22
+node,test2_heavy_query,1,2026-10-05T14:35:59Z,999,12309.091,15097.645,15189.666,15301.223,62.262,100.0,5.705,46.925,22

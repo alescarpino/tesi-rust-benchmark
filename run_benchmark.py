@@ -10,20 +10,20 @@ import re
 import os
 from datetime import datetime, timezone
 
-TEST_NAME = "test1_crud"
-K6_SCRIPT = "test1_crud/k6.script.js"
+# collect_metrics.sh è generico (prende il container come argomento), non è specifico
+# del Test 1 — resta in quella cartella ma viene riusato identico da ogni test.
 METRICS_SCRIPT = "test1_crud/collect_metrics.sh"
 RAW_METRICS_CSV = "metrics.csv"
 K6_SUMMARY_JSON = "summary.json"
-RESULTS_CSV = "results/raw/test1_crud.csv"
 
 
 def parse_args():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--language", required=True, help='es. "rust", "java"')
+    parser.add_argument("--language", required=True, help='es. "rust", "java", "node"')
     parser.add_argument("--container", required=True, help="nome del container Docker da campionare")
     parser.add_argument("--port", required=True, type=int, help="porta host su cui il backend risponde")
     parser.add_argument("--vus", required=True, type=int, help="numero di utenti virtuali k6 per questo run")
+    parser.add_argument("--test", required=True, help='es. "test1_crud", "test2_heavy_query" — deve corrispondere alla cartella con k6.script.js')
     return parser.parse_args()
 
 
@@ -41,10 +41,10 @@ def parse_mem_mib(mem_usage: str) -> float:
     return value * 1024 if unit.startswith("G") else value
 
 
-def next_run_id(language: str, test: str) -> int:
-    if not os.path.exists(RESULTS_CSV):
+def next_run_id(results_csv: str, language: str, test: str) -> int:
+    if not os.path.exists(results_csv):
         return 1
-    with open(RESULTS_CSV, newline="") as f:
+    with open(results_csv, newline="") as f:
         rows = [r for r in csv.DictReader(f) if r["language"] == language and r["test"] == test]
     return len(rows) + 1
 
@@ -52,6 +52,9 @@ def next_run_id(language: str, test: str) -> int:
 def main():
     args = parse_args()
     language = args.language
+    test_name = args.test
+    k6_script = f"{test_name}/k6.script.js"
+    results_csv = f"results/raw/{test_name}.csv"
     base_url = f"http://localhost:{args.port}"
 
     if os.path.exists(RAW_METRICS_CSV):
@@ -66,7 +69,7 @@ def main():
         start_ts = now_iso()
         subprocess.run(
             [
-                "k6", "run", K6_SCRIPT,
+                "k6", "run", k6_script,
                 "-e", f"BASE_URL={base_url}",
                 "--vus", str(args.vus),
                 f"--summary-export={K6_SUMMARY_JSON}",
@@ -107,11 +110,11 @@ def main():
     mem_avg = sum(mem_values) / len(mem_values) if mem_values else 0.0
 
     # 6. accoda la riga al CSV dei risultati (crea file + header se non esiste ancora)
-    os.makedirs(os.path.dirname(RESULTS_CSV), exist_ok=True)
-    is_new_file = not os.path.exists(RESULTS_CSV)
-    run_id = next_run_id(language, TEST_NAME)
+    os.makedirs(os.path.dirname(results_csv), exist_ok=True)
+    is_new_file = not os.path.exists(results_csv)
+    run_id = next_run_id(results_csv, language, test_name)
 
-    with open(RESULTS_CSV, "a", newline="") as f:
+    with open(results_csv, "a", newline="") as f:
         writer = csv.writer(f)
         if is_new_file:
             writer.writerow([
@@ -121,7 +124,7 @@ def main():
                 "samples_in_window",
             ])
         writer.writerow([
-            language, TEST_NAME, run_id, start_ts, args.vus,
+            language, test_name, run_id, start_ts, args.vus,
             round(avg_ms, 3), round(p90_ms, 3), round(p95_ms, 3),
             round(p99_ms, 3) if p99_ms != "" else "",
             round(req_per_s, 3), round(checks_pct, 2),
@@ -129,7 +132,7 @@ def main():
             len(cpu_values),
         ])
 
-    print(f"Run #{run_id} ({language}, vus={args.vus}) salvato in {RESULTS_CSV}")
+    print(f"Run #{run_id} ({language}, vus={args.vus}) salvato in {results_csv}")
     print(f"  latenza: avg={avg_ms:.2f}ms p90={p90_ms:.2f}ms p95={p95_ms:.2f}ms")
     print(f"  throughput={req_per_s:.2f} req/s   checks={checks_pct:.1f}%")
     print(f"  cpu_avg={cpu_avg:.2f}%   mem_avg={mem_avg:.2f}MiB   ({len(cpu_values)} campioni nella finestra)")

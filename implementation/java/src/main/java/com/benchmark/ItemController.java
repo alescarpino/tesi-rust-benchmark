@@ -53,4 +53,33 @@ public class ItemController {
         jdbcTemplate.update("DELETE FROM items WHERE id = ?", id);
         return ResponseEntity.noContent().build();
     }
+
+    @GetMapping("/reports/revenue-by-branch")
+    public ResponseEntity<List<BranchItemRevenue>> revenueByBranch() {
+        List<BranchItemRevenue> rows = jdbcTemplate.query(
+                """
+                SELECT
+                    b.name AS branch_name,
+                    i.name AS item_name,
+                    SUM(cr.quantity * cr.price) AS total_revenue,
+                    COUNT(*) AS line_count
+                FROM contract_rows cr
+                JOIN contracts c ON cr.contract_id = c.id
+                JOIN branches b ON c.branch_id = b.id
+                JOIN items i ON cr.item_id = i.id
+                WHERE c.status IN ('approved', 'ongoing')
+                  AND c.start_date BETWEEN '2025-01-01' AND '2025-12-31'
+                GROUP BY b.name, i.name
+                ORDER BY total_revenue DESC
+                LIMIT 50
+                """,
+                (rs, rowNum) -> new BranchItemRevenue(
+                        rs.getString("branch_name"),
+                        rs.getString("item_name"),
+                        rs.getBigDecimal("total_revenue"),
+                        rs.getLong("line_count")
+                )
+        );
+        return ResponseEntity.ok(rows);
+    }
 }
