@@ -24,7 +24,8 @@ def parse_args():
     parser.add_argument("--db-container", default="tesi-benchmark-db-1", help="nome del container Postgres da campionare (default: tesi-benchmark-db-1)")
     parser.add_argument("--port", required=True, type=int, help="porta host su cui il backend risponde")
     parser.add_argument("--vus", required=True, type=int, help="numero di utenti virtuali k6 per questo run")
-    parser.add_argument("--test", required=True, help='es. "test1_crud", "test2_heavy_query" — deve corrispondere alla cartella con k6.script.js')
+    parser.add_argument("--test", required=True, help='es. "test1_crud", "test2_heavy_query" — determina anche il nome del CSV in results/raw/')
+    parser.add_argument("--script", default=None, help='path allo script k6 da eseguire; default: "{test}/k6.script.js". Usarlo quando più varianti di un test condividono la stessa cartella (es. test3_json/k6.get.js, test3_json/k6.post.js)')
     return parser.parse_args()
 
 
@@ -54,7 +55,7 @@ def main():
     args = parse_args()
     language = args.language
     test_name = args.test
-    k6_script = f"{test_name}/k6.script.js"
+    k6_script = args.script or f"{test_name}/k6.script.js"
     results_csv = f"results/raw/{test_name}.csv"
     base_url = f"http://localhost:{args.port}"
 

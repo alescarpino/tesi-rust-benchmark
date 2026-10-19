@@ -4,6 +4,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.web.bind.annotation.*;
 
+import java.math.BigDecimal;
 import java.util.List;
 
 @RestController
@@ -81,5 +82,53 @@ public class ItemController {
                 )
         );
         return ResponseEntity.ok(rows);
+    }
+
+    // Test 3 (serializzazione): a differenza di Rust, qui non serve una struct "piatta"
+    // intermedia — il RowMapper riceve il ResultSet riga per riga e può costruire
+    // direttamente l'oggetto annidato (branch/item come record dentro il record principale).
+    @GetMapping("/reports/contract-rows-detailed")
+    public ResponseEntity<List<ContractRowDetailed>> contractRowsDetailed() {
+        List<ContractRowDetailed> rows = jdbcTemplate.query(
+                """
+                SELECT
+                    cr.contract_id,
+                    b.id AS branch_id,
+                    b.name AS branch_name,
+                    i.id AS item_id,
+                    i.name AS item_name,
+                    cr.quantity,
+                    cr.price,
+                    ROW_NUMBER() OVER (ORDER BY cr.id) AS line_number
+                FROM contract_rows cr
+                JOIN contracts c ON cr.contract_id = c.id
+                JOIN branches b ON c.branch_id = b.id
+                JOIN items i ON cr.item_id = i.id
+                ORDER BY cr.id
+                LIMIT 1000
+                """,
+                (rs, rowNum) -> new ContractRowDetailed(
+                        rs.getInt("contract_id"),
+                        new BranchRef(rs.getInt("branch_id"), rs.getString("branch_name")),
+                        new ItemRef(rs.getInt("item_id"), rs.getString("item_name")),
+                        rs.getInt("quantity"),
+                        rs.getBigDecimal("price"),
+                        rs.getLong("line_number")
+                )
+        );
+        return ResponseEntity.ok(rows);
+    }
+
+    // Test 3 (deserializzazione): @RequestBody è l'equivalente Spring dell'extractor
+    // Json<T> di Axum — Jackson deserializza il body PRIMA che il metodo venga invocato,
+    // "payload" arriva già come ValidateRowsPayload pronto. Nessuna scrittura su DB: il
+    // costo di persistenza è già isolato nel Test 1 (CRUD).
+    @PostMapping("/contract-rows/validate")
+    public ResponseEntity<ValidateRowsResponse> validateContractRows(@RequestBody ValidateRowsPayload payload) {
+        long received = payload.rows().size();
+        long valid = payload.rows().stream()
+                .filter(r -> r.itemId() > 0 && r.quantity() > 0 && r.price().compareTo(BigDecimal.ZERO) >= 0)
+                .count();
+        return ResponseEntity.ok(new ValidateRowsResponse(received, valid, received - valid));
     }
 }

@@ -60,6 +60,50 @@ fastify.get('/reports/revenue-by-branch', async (request, reply) => {
   return result.rows;
 });
 
+// Test 3 (serializzazione): come in Java, nessuna struct/tipo intermedio è richiesto —
+// JavaScript è a tipizzazione dinamica, quindi l'oggetto annidato si costruisce "al volo"
+// dentro il map(), senza dover dichiarare prima nessuna forma (a differenza di Rust).
+fastify.get('/reports/contract-rows-detailed', async (request, reply) => {
+  const result = await pool.query(`
+    SELECT
+        cr.contract_id,
+        b.id AS branch_id,
+        b.name AS branch_name,
+        i.id AS item_id,
+        i.name AS item_name,
+        cr.quantity,
+        cr.price,
+        ROW_NUMBER() OVER (ORDER BY cr.id) AS line_number
+    FROM contract_rows cr
+    JOIN contracts c ON cr.contract_id = c.id
+    JOIN branches b ON c.branch_id = b.id
+    JOIN items i ON cr.item_id = i.id
+    ORDER BY cr.id
+    LIMIT 1000
+  `);
+  return result.rows.map((r) => ({
+    contract_id: r.contract_id,
+    branch: { id: r.branch_id, name: r.branch_name },
+    item: { id: r.item_id, name: r.item_name },
+    quantity: r.quantity,
+    price: r.price,
+    line_number: Number(r.line_number),
+  }));
+});
+
+// Test 3 (deserializzazione): Fastify/Node deserializza il body JSON automaticamente
+// PRIMA di invocare l'handler (equivalente a Json<T> in Axum e @RequestBody in Spring) —
+// request.body arriva già come oggetto JS. Nessuna scrittura su DB (costo già isolato
+// nel Test 1).
+fastify.post('/contract-rows/validate', async (request, reply) => {
+  const rows = request.body.rows;
+  const received = rows.length;
+  const valid = rows.filter(
+    (r) => r.item_id > 0 && r.quantity > 0 && Number(r.price) >= 0
+  ).length;
+  return { received, valid, invalid: received - valid };
+});
+
 fastify.listen({ port: 8080, host: '0.0.0.0' }, (err) => {
   if (err) {
     console.error(err);
