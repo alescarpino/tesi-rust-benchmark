@@ -10,8 +10,7 @@ import re
 import os
 from datetime import datetime, timezone
 
-# collect_metrics.sh è generico (prende il container come argomento), non è specifico
-# del Test 1 — resta in quella cartella ma viene riusato identico da ogni test.
+
 METRICS_SCRIPT = "test1_crud/collect_metrics.sh"
 RAW_METRICS_CSV = "metrics.csv"
 K6_SUMMARY_JSON = "summary.json"
@@ -34,7 +33,7 @@ def now_iso():
 
 
 def parse_mem_mib(mem_usage: str) -> float:
-    # "42.1MiB / 512MiB" -> 42.1
+  
     used = mem_usage.split("/")[0].strip()
     match = re.match(r"([\d.]+)\s*(Mi?B|Gi?B)", used)
     if not match:
@@ -62,12 +61,12 @@ def main():
     if os.path.exists(RAW_METRICS_CSV):
         os.remove(RAW_METRICS_CSV)
 
-    # 1. avvia il campionamento CPU/memoria in background, su backend E su Postgres
+    # avvia il campionamento CPU/memoria
     metrics_proc = subprocess.Popen(["bash", METRICS_SCRIPT, args.container, args.db_container])
     time.sleep(1)  # margine perché il loop scriva almeno l'header prima che parta k6
 
     try:
-        # 2. lancia k6 in primo piano, puntando al backend giusto, registrando i bordi della finestra di test
+        # lancia k6 in primo piano, 
         start_ts = now_iso()
         subprocess.run(
             [
@@ -80,8 +79,7 @@ def main():
         )
         end_ts = now_iso()
     finally:
-        # 3. ferma il campionamento SEMPRE, anche se k6 fallisce o lancia un'eccezione,
-        #    altrimenti resta un processo orfano che continua a girare in background
+        # ferma il campionamento metriche
         metrics_proc.terminate()
         metrics_proc.wait()
 
@@ -98,7 +96,7 @@ def main():
     fails = m["checks"]["fails"]
     checks_pct = 100 * passes / (passes + fails) if (passes + fails) else 0.0
 
-    # 5. legge le metriche di sistema (backend E db), filtrando SOLO la finestra temporale del test vero
+    # 5. legge le metriche di sistema (backend E db)
     cpu_values, mem_values = [], []
     db_cpu_values, db_mem_values = [], []
     with open(RAW_METRICS_CSV, newline="") as f:
@@ -116,7 +114,7 @@ def main():
     db_cpu_avg = sum(db_cpu_values) / len(db_cpu_values) if db_cpu_values else 0.0
     db_mem_avg = sum(db_mem_values) / len(db_mem_values) if db_mem_values else 0.0
 
-    # 6. accoda la riga al CSV dei risultati (crea file + header se non esiste ancora)
+    # 6. accoda la riga al CSV dei risultati 
     os.makedirs(os.path.dirname(results_csv), exist_ok=True)
     is_new_file = not os.path.exists(results_csv)
     run_id = next_run_id(results_csv, language, test_name)

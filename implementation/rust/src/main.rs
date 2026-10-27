@@ -10,6 +10,8 @@ struct Item { id: i32, name: String, price: rust_decimal::Decimal }
 #[derive(Deserialize)]
 struct ItemPayLoad { name: String, price: rust_decimal::Decimal }
 
+
+//TEST 1 CRUD //
 async fn get_item(State(pool): State<PgPool>, Path(id): Path<i32>) -> Result<Json<Item>, StatusCode> {
     sqlx::query_as::<_,Item>("SELECT id, name, price FROM items where id = $1")
         .bind(id)
@@ -53,6 +55,7 @@ async fn delete_item(State(pool): State<PgPool>,Path(id): Path<i32>) -> Result<S
 
 }
 
+// TEST 2 QUERY PESANTE//
 #[derive(Serialize, FromRow)]
 struct BranchItemRevenue {
     branch_name: String,
@@ -86,16 +89,9 @@ async fn revenue_by_branch(
     .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)
 }
 
-// --- Test 3: serializzazione/deserializzazione JSON ---
-//
-// GET  /reports/contract-rows-detailed  -> la query torna righe piatte (ContractRowFlat),
-// il codice applicativo le reimpacchetta in struct annidate (ContractRowDetailed) prima
-// di serializzarle: branch e item diventano oggetti dentro ogni riga, non più stringhe.
-//
-// POST /contract-rows/validate -> riceve un array di righe (come createFromPlanner in ARMS),
-// le deserializza e le valida, senza toccare il DB: isola il costo di parsing JSON dal
-// costo di scrittura, che è già misurato nel Test 1.
-
+// TEST 3 SERIALIZZAZIONE E DESERIALIZZAZIONE JSON
+// GET  /reports/contract-rows-detailed  
+// POST /contract-rows/validate 
 #[derive(FromRow)]
 struct ContractRowFlat {
     contract_id: i32,
@@ -154,7 +150,6 @@ async fn contract_rows_detailed(
     .await
     .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
 
-    // qui avviene l'impacchettamento: da riga piatta a struct annidata
     let detailed: Vec<ContractRowDetailed> = flat_rows
         .into_iter()
         .map(|r| ContractRowDetailed {
