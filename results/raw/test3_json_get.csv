@@ -1,0 +1,4 @@
+language,test,run_id,timestamp,vus,avg_ms,p90_ms,p95_ms,p99_ms,req_per_s,checks_pct,cpu_avg_pct,mem_avg_mib,db_cpu_avg_pct,db_mem_avg_mib,samples_in_window
+rust,test3_json_get,1,2026-10-30T11:12:50Z,20,19.632,29.897,46.813,123.518,19.576,100.0,6.509,33.961,12.575,75.242,15
+node,test3_json_get,1,2026-10-30T11:14:52Z,20,18.479,35.544,65.355,82.349,19.605,100.0,6.313,33.491,14.064,75.427,15
+java,test3_json_get,1,2026-10-30T11:15:41Z,20,19.383,35.735,53.977,80.809,19.589,100.0,6.286,33.475,15.583,75.421,14
